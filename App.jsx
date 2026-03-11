@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore";
+// Firebase carregado via index.html — não importar aqui
 
 // ─── GILROY FONT ──────────────────────────────────────────────────────────────
 const GilroyFont = () => (
@@ -63,21 +62,37 @@ const exportarExcel = (nomeArquivo, colunas, linhas) => {
 };
 
 
-// ─── FIREBASE CONFIG ─────────────────────────────────────────────────────────
-// ⚠️  SUBSTITUA os valores abaixo pelas suas credenciais do Firebase Console
-// Acesse: console.firebase.google.com → Seu projeto → ⚙️ Configurações → SDK
+// ─── FIRESTORE REST API ───────────────────────────────────────────────────────
+const FS_PROJECT = "estruturamente-recrutamento";
+const FS_KEY     = "AIzaSyC8rkRLv7T6yQLkTz4mGniOOGgQgiemGv0";
+const FS_BASE    = `https://firestore.googleapis.com/v1/projects/${FS_PROJECT}/databases/(default)/documents`;
 
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyC8rkRLv7T6yQLkTz4mGniOOGgQgiemGv0",
-  authDomain:        "estruturamente-recrutamento.firebaseapp.com",
-  projectId:         "estruturamente-recrutamento",
-  storageBucket:     "estruturamente-recrutamento.firebasestorage.app",
-  messagingSenderId: "736124257642",
-  appId:             "1:736124257642:web:bbdc83bf78baf431fc5113",
+const toFsValue = (v) => {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === "boolean") return { booleanValue: v };
+  if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === "string") return { stringValue: v };
+  if (Array.isArray(v)) return { arrayValue: { values: v.length ? v.map(toFsValue) : [] } };
+  if (typeof v === "object") return { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([k,val]) => [k, toFsValue(val)])) } };
+  return { stringValue: String(v) };
 };
 
-const firebaseApp  = initializeApp(FIREBASE_CONFIG);
-const firestore    = getFirestore(firebaseApp);
+const fromFsValue = (v) => {
+  if (!v) return null;
+  if ("nullValue" in v) return null;
+  if ("booleanValue" in v) return v.booleanValue;
+  if ("integerValue" in v) return Number(v.integerValue);
+  if ("doubleValue" in v) return v.doubleValue;
+  if ("stringValue" in v) return v.stringValue;
+  if ("arrayValue" in v) return (v.arrayValue.values || []).map(fromFsValue);
+  if ("mapValue" in v) return Object.fromEntries(Object.entries(v.mapValue.fields || {}).map(([k,val]) => [k, fromFsValue(val)]));
+  return null;
+};
+
+const fromFsDoc = (doc) => {
+  if (!doc || !doc.fields) return null;
+  return Object.fromEntries(Object.entries(doc.fields).map(([k,v]) => [k, fromFsValue(v)]));
+};
 
 // ─── CACHE LOCAL (espelho do Firestore em memória) ────────────────────────────
 const DB = {
@@ -97,39 +112,37 @@ const DB = {
   _carregado: false,
 };
 
-// ─── FUNÇÕES FIREBASE ─────────────────────────────────────────────────────────
+// ─── FUNÇÕES FIRESTORE REST ──────────────────────────────────────────────────
 
-// Salva UM documento na coleção (upsert por id)
+// Salva UM documento na coleção via REST (upsert por id)
 const dbSalvarDoc = async (colecao, item) => {
   try {
     const id = String(item.id);
-    await setDoc(doc(firestore, colecao, id), { ...item, id });
+    const fields = Object.fromEntries(Object.entries(item).map(([k,v]) => [k, toFsValue(v)]));
+    await fetch(`${FS_BASE}/${colecao}/${id}?key=${FS_KEY}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fields }),
+    });
   } catch (e) { console.error(`Erro ao salvar ${colecao}:`, e); }
 };
 
-// Exclui um documento da coleção
+// Exclui um documento da coleção via REST
 const dbExcluirDoc = async (colecao, id) => {
   try {
-    await deleteDoc(doc(firestore, colecao, String(id)));
+    await fetch(`${FS_BASE}/${colecao}/${String(id)}?key=${FS_KEY}`, { method: "DELETE" });
   } catch (e) { console.error(`Erro ao excluir ${colecao}:`, e); }
 };
 
-// Salva toda uma coleção de uma vez (para mensagens etc)
-const dbSalvar = async (colecao) => {
-  try {
-    await Promise.all(DB[colecao].map(item => dbSalvarDoc(colecao, item)));
-  } catch (e) { console.error(`Erro ao salvar coleção ${colecao}:`, e); }
-};
-
-// Carrega todos os dados do Firestore na inicialização
+// Carrega todos os dados do Firestore na inicialização via REST
 const dbCarregar = async () => {
   try {
     const colecoes = ["candidatos", "vagas", "entrevistas", "diagnosticos", "mensagens", "empresas"];
     const resultados = await Promise.all(
-      colecoes.map(c => getDocs(collection(firestore, c)))
+      colecoes.map(c => fetch(`${FS_BASE}/${c}?key=${FS_KEY}`).then(r => r.json()))
     );
     colecoes.forEach((c, i) => {
-      const docs = resultados[i].docs.map(d => d.data());
+      const docs = (resultados[i].documents || []).map(fromFsDoc).filter(Boolean);
       if (docs.length > 0) DB[c] = docs;
     });
   } catch (e) { console.error("Erro ao carregar dados:", e); }
@@ -137,12 +150,10 @@ const dbCarregar = async () => {
 };
 
 // Currículo PDF salvo como base64 direto no Firestore (sem Storage)
-// Limite: ~750KB por PDF — suficiente para a maioria dos currículos
 const uploadCurriculoFirebase = async (file, setUploadStatus) => {
   if (!file) return null;
   setUploadStatus("enviando");
   try {
-    // Verificar tamanho (máx 750KB para caber no Firestore 1MB/doc)
     if (file.size > 750000) {
       alert("Currículo muito grande. Use um PDF de até 750KB.");
       setUploadStatus("erro");
@@ -150,7 +161,7 @@ const uploadCurriculoFirebase = async (file, setUploadStatus) => {
     }
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result); // data:application/pdf;base64,...
+      reader.onload = () => resolve(reader.result);
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
