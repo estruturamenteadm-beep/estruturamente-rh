@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-// Firebase carregado via index.html — não importar aqui
-
 // ─── GILROY FONT ──────────────────────────────────────────────────────────────
 const GilroyFont = () => (
   <style>{`
@@ -1902,6 +1900,11 @@ const FrontCliente = ({ embedded, onBack }) => {
 export default function App() {
   const [view, setView] = useState("home"); // home | admin | front
   const [logado, setLogado] = useState(false);
+  const [dbPronto, setDbPronto] = useState(false);
+
+  useEffect(() => {
+    dbCarregar().then(() => setDbPronto(true));
+  }, []);
 
   if (view === "front") return (
     <div>
