@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, doc, getDocs, setDoc, deleteDoc } from "firebase/firestore";
 
 // ─── GILROY FONT ──────────────────────────────────────────────────────────────
 const GilroyFont = () => (
@@ -68,12 +68,12 @@ const exportarExcel = (nomeArquivo, colunas, linhas) => {
 // Acesse: console.firebase.google.com → Seu projeto → ⚙️ Configurações → SDK
 
 const FIREBASE_CONFIG = {
-  apiKey:            "COLE_AQUI_SUA_apiKey",
-  authDomain:        "COLE_AQUI_SEU_authDomain",
-  projectId:         "COLE_AQUI_SEU_projectId",
-  storageBucket:     "COLE_AQUI_SEU_storageBucket",
-  messagingSenderId: "COLE_AQUI_SEU_messagingSenderId",
-  appId:             "COLE_AQUI_SEU_appId",
+  apiKey:            "AIzaSyC8rkRLv7T6yQLkTz4mGniOOGgQgiemGv0",
+  authDomain:        "estruturamente-recrutamento.firebaseapp.com",
+  projectId:         "estruturamente-recrutamento",
+  storageBucket:     "estruturamente-recrutamento.firebasestorage.app",
+  messagingSenderId: "736124257642",
+  appId:             "1:736124257642:web:bbdc83bf78baf431fc5113",
 };
 
 const firebaseApp  = initializeApp(FIREBASE_CONFIG);
@@ -1543,20 +1543,6 @@ const AbaDisc = () => {
 // ─── SISTEMA ADM ──────────────────────────────────────────────────────────────
 const SistemaAdm = ({ onLogout }) => {
   const [aba, setAba] = useState("candidatos");
-  const [dbCarregando, setDbCarregando] = useState(true);
-
-  useEffect(() => {
-    dbCarregar().then(() => setDbCarregando(false));
-  }, []);
-
-  if (dbCarregando) return (
-    <div style={{ ...styles.page, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-      <div style={{ textAlign: "center" }}>
-        <LogoSymbol size={60} />
-        <p style={{ color: COLORS.grayLight, marginTop: 16, fontSize: 15 }}>Carregando dados...</p>
-      </div>
-    </div>
-  );
   const nav = [
     { id: "candidatos", icon: "", label: "Candidatos" },
     { id: "mensagens", icon: "", label: "Mensagens Padrão" },
@@ -1917,7 +1903,15 @@ export default function App() {
 
   if (view === "admin") {
     if (!logado) return <Login onLogin={() => setLogado(true)} />;
-    return <SistemaAdm onLogout={() => { setLogado(false); setView("home"); }} />;
+    if (!dbPronto) return (
+      <div style={{ ...styles.page, display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+        <div style={{ textAlign: "center" }}>
+          <LogoSymbol size={60} />
+          <p style={{ color: COLORS.grayLight, marginTop: 16, fontSize: 15 }}>Carregando dados...</p>
+        </div>
+      </div>
+    );
+    return <SistemaAdm key={dbPronto} onLogout={() => { setLogado(false); setView("home"); }} />;
   }
 
   return (
