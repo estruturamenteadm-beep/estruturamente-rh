@@ -399,7 +399,15 @@ const AbaCandidatos = () => {
           <tbody>
             {filtrados.map(c => (
               <tr key={c.id} style={{ cursor: "pointer" }}>
-                <td style={styles.td}><b>{c.nome}</b><br /><span style={{ fontSize: 12, color: COLORS.grayLight }}>{c.idade} anos</span></td>
+                <td style={styles.td}>
+                  <b>{c.nome}</b>
+                  {c.origem === "Banco de Talentos" && (
+                    <span style={{ display: "inline-block", marginLeft: 6, fontSize: 10, fontWeight: 700,
+                      padding: "1px 7px", borderRadius: 10,
+                      background: COLORS.bluePale, color: COLORS.blueDark }}>Banco de Talentos</span>
+                  )}
+                  <br /><span style={{ fontSize: 12, color: COLORS.grayLight }}>{c.idade ? `${c.idade} anos` : c.email}</span>
+                </td>
                 <td style={styles.td}>{c.profissao}</td>
                 <td style={styles.td}>{c.area}</td>
                 <td style={styles.td}>{c.cidade}</td>
