@@ -107,6 +107,7 @@ const DB = {
     { id: "msg6", titulo: "Solicitação de Documentos", texto: "Olá {nome}! Para darmos continuidade ao seu processo seletivo para a vaga de {cargo}, precisamos dos seguintes documentos: RG, CPF, comprovante de residência e currículo atualizado. Envie em resposta a esta mensagem. Obrigado! Equipe Estruturamente." },
   ],
   empresas: [],
+  hub_vagas: [],
   _carregado: false,
 };
 
@@ -135,7 +136,7 @@ const dbExcluirDoc = async (colecao, id) => {
 // Carrega todos os dados do Firestore na inicialização via REST
 const dbCarregar = async () => {
   try {
-    const colecoes = ["candidatos", "vagas", "entrevistas", "diagnosticos", "mensagens", "empresas"];
+    const colecoes = ["candidatos", "vagas", "entrevistas", "diagnosticos", "mensagens", "empresas", "hub_vagas"];
     const resultados = await Promise.all(
       colecoes.map(c => fetch(`${FS_BASE}/${c}?key=${FS_KEY}`).then(r => r.json()))
     );
@@ -1549,6 +1550,181 @@ const AbaDisc = () => {
   );
 };
 
+
+// ─── ABA HUB DE VAGAS ─────────────────────────────────────────────────────────
+const AbaHub = () => {
+  const vazio = { titulo: "", empresa: "", area: "", modelo: "Remoto", nivel: "Pleno", cidade: "", link: "", origem: "LinkedIn", ativo: true };
+  const [hub, setHub] = useState([...DB.hub_vagas]);
+  const [form, setForm] = useState(vazio);
+  const [editId, setEditId] = useState(null);
+  const [busca, setBusca] = useState("");
+
+  const f = k => e => setForm(p => ({ ...p, [k]: e.target.type === "checkbox" ? e.target.checked : e.target.value }));
+
+  const salvar = () => {
+    if (!form.titulo.trim() || !form.link.trim()) return;
+    let updated;
+    if (editId) {
+      updated = hub.map(h => h.id === editId ? { ...form, id: editId } : h);
+    } else {
+      const novo = { ...form, id: Date.now(), criadoEm: new Date().toISOString() };
+      updated = [...hub, novo];
+      dbSalvarDoc("hub_vagas", novo);
+    }
+    if (editId) dbSalvarDoc("hub_vagas", { ...form, id: editId });
+    setHub(updated); DB.hub_vagas = updated;
+    setForm(vazio); setEditId(null);
+  };
+
+  const toggleAtivo = (id) => {
+    const updated = hub.map(h => h.id === id ? { ...h, ativo: !h.ativo } : h);
+    const item = updated.find(h => h.id === id);
+    setHub(updated); DB.hub_vagas = updated;
+    dbSalvarDoc("hub_vagas", item);
+  };
+
+  const excluir = (id) => {
+    const updated = hub.filter(h => h.id !== id);
+    setHub(updated); DB.hub_vagas = updated;
+    dbExcluirDoc("hub_vagas", id);
+  };
+
+  const editar = (h) => { setForm({ ...h }); setEditId(h.id); };
+
+  const filtradas = hub.filter(h =>
+    !busca || h.titulo?.toLowerCase().includes(busca.toLowerCase()) ||
+    h.empresa?.toLowerCase().includes(busca.toLowerCase()) ||
+    h.origem?.toLowerCase().includes(busca.toLowerCase())
+  );
+
+  const origemCor = { "LinkedIn": "#0A66C2", "Gupy": "#7C3AED", "Catho": "#E05C00", "Empresa Parceira": COLORS.success, "Outro": COLORS.gray };
+
+  return (
+    <div style={styles.abaWrap}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <div>
+          <h2 style={styles.abaTitle}>🌐 Hub de Vagas Externas</h2>
+          <p style={{ margin: 0, fontSize: 13, color: COLORS.grayLight }}>
+            Vagas ativas: <strong style={{ color: COLORS.blue }}>{hub.filter(h => h.ativo).length}</strong> de {hub.length} cadastradas
+          </p>
+        </div>
+      </div>
+
+      {/* FORMULÁRIO */}
+      <div style={{ ...styles.card, marginBottom: 24, borderLeft: `4px solid ${COLORS.blue}` }}>
+        <h3 style={{ margin: "0 0 16px", fontSize: 14, fontWeight: 700, color: COLORS.blueDark }}>
+          {editId ? "✏️ Editar vaga" : "➕ Adicionar vaga ao hub"}
+        </h3>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label style={styles.label}>Título da Vaga *</label>
+            <input style={styles.input} value={form.titulo} onChange={f("titulo")} placeholder="Ex: Analista de RH Sênior" />
+          </div>
+          <div>
+            <label style={styles.label}>Empresa</label>
+            <input style={styles.input} value={form.empresa} onChange={f("empresa")} placeholder="Ex: Google, Empresa Confidencial..." />
+          </div>
+          <div>
+            <label style={styles.label}>Link da Vaga *</label>
+            <input style={styles.input} value={form.link} onChange={f("link")} placeholder="https://linkedin.com/jobs/..." />
+          </div>
+          <div>
+            <label style={styles.label}>Origem</label>
+            <select style={styles.select} value={form.origem} onChange={f("origem")}>
+              {["LinkedIn", "Gupy", "Catho", "Empresa Parceira", "Outro"].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={styles.label}>Área</label>
+            <input style={styles.input} value={form.area} onChange={f("area")} placeholder="Ex: Tecnologia, RH, Vendas" />
+          </div>
+          <div>
+            <label style={styles.label}>Cidade</label>
+            <input style={styles.input} value={form.cidade} onChange={f("cidade")} placeholder="Ex: São Paulo - SP" />
+          </div>
+          <div>
+            <label style={styles.label}>Modelo</label>
+            <select style={styles.select} value={form.modelo} onChange={f("modelo")}>
+              {["Remoto", "Híbrido", "Presencial"].map(m => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={styles.label}>Nível</label>
+            <select style={styles.select} value={form.nivel} onChange={f("nivel")}>
+              {["Estágio", "Júnior", "Pleno", "Sênior", "Especialista", "Gerência"].map(n => <option key={n}>{n}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 14 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: COLORS.text }}>
+            <input type="checkbox" checked={form.ativo} onChange={f("ativo")} style={{ accentColor: COLORS.blue }} />
+            <strong>Publicar no portal agora</strong>
+          </label>
+          <button onClick={salvar} style={{ ...styles.btnPrimary, marginLeft: "auto" }}>
+            {editId ? "Salvar alterações" : "Adicionar ao Hub"}
+          </button>
+          {editId && (
+            <button onClick={() => { setForm(vazio); setEditId(null); }}
+              style={{ ...styles.btnSecondary }}>Cancelar</button>
+          )}
+        </div>
+      </div>
+
+      {/* BUSCA */}
+      <div style={{ marginBottom: 16 }}>
+        <input style={styles.input} value={busca} onChange={e => setBusca(e.target.value)}
+          placeholder="🔍 Buscar por título, empresa ou origem..." />
+      </div>
+
+      {/* LISTA */}
+      {filtradas.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "48px 20px", color: COLORS.grayLight }}>
+          <p style={{ fontSize: 32 }}>🌐</p>
+          <p>Nenhuma vaga no hub ainda. Adicione acima!</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {filtradas.map(h => (
+            <div key={h.id} style={{
+              ...styles.card, display: "flex", alignItems: "center", gap: 14,
+              borderLeft: `4px solid ${h.ativo ? (origemCor[h.origem] || COLORS.blue) : COLORS.grayPale}`,
+              opacity: h.ativo ? 1 : 0.55,
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                  <strong style={{ fontSize: 14, color: COLORS.text }}>{h.titulo}</strong>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12,
+                    background: (origemCor[h.origem] || COLORS.blue) + "22",
+                    color: origemCor[h.origem] || COLORS.blue }}>{h.origem}</span>
+                  {h.modelo && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: COLORS.bluePale, color: COLORS.blueDark }}>{h.modelo}</span>}
+                  {h.nivel && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: COLORS.creamDark, color: COLORS.gray }}>{h.nivel}</span>}
+                </div>
+                <div style={{ fontSize: 12, color: COLORS.grayLight }}>
+                  {h.empresa && <span>{h.empresa}</span>}
+                  {h.area && <span> · {h.area}</span>}
+                  {h.cidade && <span> · {h.cidade}</span>}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                {/* Toggle ativo/inativo */}
+                <button onClick={() => toggleAtivo(h.id)} title={h.ativo ? "Desativar do portal" : "Ativar no portal"}
+                  style={{ background: h.ativo ? COLORS.success + "22" : COLORS.grayPale,
+                    border: "none", borderRadius: 20, padding: "4px 12px",
+                    cursor: "pointer", fontSize: 12, fontWeight: 700,
+                    color: h.ativo ? COLORS.success : COLORS.grayLight }}>
+                  {h.ativo ? "● Ativo" : "○ Inativo"}
+                </button>
+                <button onClick={() => editar(h)} style={{ ...styles.btnSecondary, padding: "5px 12px", fontSize: 12 }}>✏️</button>
+                <button onClick={() => excluir(h.id)} style={{ ...styles.btnDanger, padding: "5px 12px", fontSize: 12 }}>🗑</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ─── SISTEMA ADM ──────────────────────────────────────────────────────────────
 const SistemaAdm = ({ onLogout }) => {
   const [aba, setAba] = useState("candidatos");
@@ -1560,6 +1736,7 @@ const SistemaAdm = ({ onLogout }) => {
     { id: "dashboard", icon: "", label: "Dashboard Empresa" },
     { id: "diagnostico", icon: "", label: "Diagnóstico" },
     { id: "disc", icon: "", label: "Perfil DISC" },
+    { id: "hub", icon: "🌐", label: "Hub de Vagas" },
   ];
 
   const renderAba = () => {
@@ -1571,6 +1748,7 @@ const SistemaAdm = ({ onLogout }) => {
       case "dashboard": return <AbaDashboard />;
       case "diagnostico": return <AbaDiagnostico />;
       case "disc": return <AbaDisc />;
+      case "hub": return <AbaHub />;
       default: return null;
     }
   };
