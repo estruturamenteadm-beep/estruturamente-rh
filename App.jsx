@@ -1582,7 +1582,7 @@ const AbaDisc = () => {
 
 // ─── ABA HUB DE VAGAS ─────────────────────────────────────────────────────────
 const AbaHub = () => {
-  const vazio = { titulo: "", empresa: "", area: "", modelo: "Remoto", nivel: "Pleno", cidade: "", link: "", origem: "LinkedIn", ativo: true };
+  const vazio = { titulo: "", empresa: "", area: "", modelo: "Remoto", nivel: "Não informado", cidade: "", link: "", origem: "LinkedIn", ativo: true };
   const [hub, setHub] = useState([...DB.hub_vagas]);
   const [form, setForm] = useState(vazio);
   const [editId, setEditId] = useState(null);
@@ -1680,7 +1680,7 @@ const AbaHub = () => {
           <div>
             <label style={styles.label}>Nível</label>
             <select style={styles.select} value={form.nivel} onChange={f("nivel")}>
-              {["Estágio", "Júnior", "Pleno", "Sênior", "Especialista", "Gerência"].map(n => <option key={n}>{n}</option>)}
+              {["Não informado", "Estágio", "Júnior", "Pleno", "Sênior", "Especialista", "Gerência"].map(n => <option key={n}>{n}</option>)}
             </select>
           </div>
         </div>
