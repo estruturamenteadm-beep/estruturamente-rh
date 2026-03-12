@@ -589,24 +589,38 @@ const AbaMensagens = () => {
 
 // ─── ABA VAGAS ────────────────────────────────────────────────────────────────
 const AbaVagas = () => {
+  const formVazio = { empresa: "", cargo: "", area: "", modelo: "Híbrido", cidade: "", salario: "", beneficios: "", status: "Em andamento", prazo: "", hardSkills: "", softSkills: "", nivel: "Pleno", descricao: "", cobradoEmpresa: "", ticketMedio: "", confidencial: "Não", dataAbertura: new Date().toISOString().split("T")[0] };
   const [vagas, setVagas] = useState([...DB.vagas]);
   const [modal, setModal] = useState(false);
+  const [editId, setEditId] = useState(null);
   const [detModal, setDetModal] = useState(null);
   const [contratoModal, setContratoModal] = useState(null);
-  const [form, setForm] = useState({ empresa: "", cargo: "", area: "", modelo: "Híbrido", cidade: "", salario: "", beneficios: "", status: "Em andamento", prazo: "", hardSkills: "", softSkills: "", nivel: "Pleno", descricao: "", cobradoEmpresa: "", ticketMedio: "", dataAbertura: new Date().toISOString().split("T")[0] });
+  const [form, setForm] = useState({ ...formVazio });
   const [contrato, setContrato] = useState({ razaoSocial: "", cnpj: "", endereco: "", representante: "", cpfRepresentante: "", cargo: "", valorServico: "", formaPagamento: "À vista após fechamento da vaga", prazoVaga: "", percentualSucesso: "", observacoesContrato: "", dataContrato: new Date().toISOString().split("T")[0] });
 
+  const fecharModal = () => { setModal(false); setEditId(null); setForm({ ...formVazio }); };
+
   const salvar = () => {
-    const nova = { ...form, id: Date.now(), candidatos: [] };
-    const updated = [...vagas, nova];
-    setVagas(updated); DB.vagas = updated; dbSalvarDoc('vagas', nova);
-    if (!DB.empresas.find(e => e.nome === form.empresa)) {
-      const novaEmp = { id: Date.now(), nome: form.empresa, vagas: [nova.id] };
-      DB.empresas.push(novaEmp);
-      dbSalvarDoc('empresas', novaEmp);
+    if (editId) {
+      const updated = vagas.map(v => v.id === editId ? { ...form, id: editId, candidatos: v.candidatos || [] } : v);
+      setVagas(updated); DB.vagas = updated;
+      dbSalvarDoc('vagas', { ...form, id: editId, candidatos: vagas.find(v => v.id === editId)?.candidatos || [] });
+    } else {
+      const nova = { ...form, id: Date.now(), candidatos: [] };
+      const updated = [...vagas, nova];
+      setVagas(updated); DB.vagas = updated; dbSalvarDoc('vagas', nova);
+      if (!DB.empresas.find(e => e.nome === form.empresa)) {
+        const novaEmp = { id: Date.now(), nome: form.empresa, vagas: [nova.id] };
+        DB.empresas.push(novaEmp); dbSalvarDoc('empresas', novaEmp);
+      }
     }
-    setModal(false);
-    setForm({ empresa: "", cargo: "", area: "", modelo: "Híbrido", cidade: "", salario: "", beneficios: "", status: "Em andamento", prazo: "", hardSkills: "", softSkills: "", nivel: "Pleno", descricao: "", cobradoEmpresa: "", ticketMedio: "", dataAbertura: new Date().toISOString().split("T")[0] });
+    fecharModal();
+  };
+
+  const editarVaga = (v) => {
+    setForm({ ...formVazio, ...v });
+    setEditId(v.id);
+    setModal(true);
   };
 
   const atualizarStatus = (id, status) => {
@@ -735,6 +749,7 @@ const AbaVagas = () => {
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
               <button style={{ ...styles.btn, ...styles.btnSecondary, padding: "7px 14px", fontSize: 13 }} onClick={() => setDetModal(v)}>Detalhes</button>
+              <button style={{ ...styles.btn, background: COLORS.bluePale, color: COLORS.blueDark, border: `1px solid ${COLORS.blue}`, padding: "7px 14px", fontSize: 13 }} onClick={() => editarVaga(v)}>✏️ Editar</button>
               <button style={{ ...styles.btn, background: COLORS.creamDark, color: COLORS.blueDark, border: `1px solid ${COLORS.blue}`, padding: "7px 14px", fontSize: 13 }} onClick={() => abrirContrato(v)}>Contrato</button>
               <select style={{ ...styles.select, width: 160, padding: "7px 10px", fontSize: 12 }} value={v.status} onChange={e => atualizarStatus(v.id, e.target.value)}>
                 {["Em andamento", "Em entrevistas", "Em contato com candidatos", "Encerrada"].map(s => <option key={s}>{s}</option>)}
@@ -744,7 +759,7 @@ const AbaVagas = () => {
           </div>
         ))}
       </div>
-      <Modal open={modal} onClose={() => setModal(false)} title="Cadastrar Nova Vaga" width={680}>
+      <Modal open={modal} onClose={fecharModal} title={editId ? "✏️ Editar Vaga" : "Cadastrar Nova Vaga"} width={680}>
         <Grid2>
           <FormRow label="Empresa Solicitante"><input style={styles.input} value={form.empresa} onChange={e => setForm({ ...form, empresa: e.target.value })} /></FormRow>
           <FormRow label="Cargo" half><input style={styles.input} value={form.cargo} onChange={e => setForm({ ...form, cargo: e.target.value })} /></FormRow>
@@ -767,10 +782,16 @@ const AbaVagas = () => {
           <FormRow label="Descrição da Vaga"><textarea style={{ ...styles.textarea, height: 80 }} value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></FormRow>
           <FormRow label="Valor Cobrado da Empresa (R$)" half><input style={styles.input} type="number" value={form.cobradoEmpresa} onChange={e => setForm({ ...form, cobradoEmpresa: e.target.value })} /></FormRow>
           <FormRow label="Prazo de Fechamento" half><input style={styles.input} type="date" value={form.prazo} onChange={e => setForm({ ...form, prazo: e.target.value })} /></FormRow>
+          <FormRow label="Exibir empresa no portal de candidatos?">
+            <select style={styles.select} value={form.confidencial || "Não"} onChange={e => setForm({ ...form, confidencial: e.target.value })}>
+              <option value="Não">Mostrar nome da empresa</option>
+              <option value="Sim — não divulgar o nome da empresa">Vaga Confidencial — ocultar empresa</option>
+            </select>
+          </FormRow>
         </Grid2>
         <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-          <button style={{ ...styles.btn, ...styles.btnPrimary, flex: 1 }} onClick={salvar}>Cadastrar Vaga</button>
-          <button style={{ ...styles.btn, ...styles.btnSecondary }} onClick={() => setModal(false)}>Cancelar</button>
+          <button style={{ ...styles.btn, ...styles.btnPrimary, flex: 1 }} onClick={salvar}>{editId ? "Salvar Alterações" : "Cadastrar Vaga"}</button>
+          <button style={{ ...styles.btn, ...styles.btnSecondary }} onClick={fecharModal}>Cancelar</button>
         </div>
       </Modal>
       <Modal open={!!detModal} onClose={() => setDetModal(null)} title="Detalhes da Vaga" width={600}>
