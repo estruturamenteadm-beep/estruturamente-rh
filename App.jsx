@@ -1632,7 +1632,7 @@ const AbaDisc = () => {
 
 // ─── ABA HUB DE VAGAS ─────────────────────────────────────────────────────────
 const AbaHub = () => {
-  const vazio = { titulo: "", empresa: "", area: "", modelo: "Remoto", nivel: "Não informado", cidade: "", link: "", origem: "LinkedIn", ativo: true };
+  const vazio = { titulo: "", empresa: "", area: "", modelo: "Remoto", nivel: "Não informado", cidade: "", link: "", origem: "LinkedIn", ativo: true, dataPostagem: new Date().toISOString().split("T")[0] };
   const [hub, setHub] = useState([...DB.hub_vagas]);
   const [form, setForm] = useState(vazio);
   const [editId, setEditId] = useState(null);
@@ -1714,6 +1714,13 @@ const AbaHub = () => {
             </select>
           </div>
           <div>
+            <label style={styles.label}>Data de Postagem</label>
+            <input style={styles.input} type="date" value={form.dataPostagem || ""} onChange={f("dataPostagem")} />
+            <p style={{ margin: "4px 0 0", fontSize: 11, color: COLORS.grayLight }}>
+              Vaga expira automaticamente 30 dias após esta data
+            </p>
+          </div>
+          <div>
             <label style={styles.label}>Área</label>
             <input style={styles.input} value={form.area} onChange={f("area")} placeholder="Ex: Tecnologia, RH, Vendas" />
           </div>
@@ -1769,21 +1776,34 @@ const AbaHub = () => {
               borderLeft: `4px solid ${h.ativo ? (origemCor[h.origem] || COLORS.blue) : COLORS.grayPale}`,
               opacity: h.ativo ? 1 : 0.55,
             }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
-                  <strong style={{ fontSize: 14, color: COLORS.text }}>{h.titulo}</strong>
-                  <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12,
-                    background: (origemCor[h.origem] || COLORS.blue) + "22",
-                    color: origemCor[h.origem] || COLORS.blue }}>{h.origem}</span>
-                  {h.modelo && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: COLORS.bluePale, color: COLORS.blueDark }}>{h.modelo}</span>}
-                  {h.nivel && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: COLORS.creamDark, color: COLORS.gray }}>{h.nivel}</span>}
-                </div>
-                <div style={{ fontSize: 12, color: COLORS.grayLight }}>
-                  {h.empresa && <span>{h.empresa}</span>}
-                  {h.area && <span> · {h.area}</span>}
-                  {h.cidade && <span> · {h.cidade}</span>}
-                </div>
-              </div>
+              {(() => {
+                const hoje = new Date();
+                const postagem = h.dataPostagem ? new Date(h.dataPostagem + "T00:00:00") : null;
+                const expiry = postagem ? new Date(postagem.getTime() + 30 * 24 * 60 * 60 * 1000) : null;
+                const expirou = expiry && hoje > expiry;
+                const diasRestantes = expiry ? Math.ceil((expiry - hoje) / (1000 * 60 * 60 * 24)) : null;
+                return (
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                      <strong style={{ fontSize: 14, color: COLORS.text }}>{h.titulo}</strong>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12,
+                        background: (origemCor[h.origem] || COLORS.blue) + "22",
+                        color: origemCor[h.origem] || COLORS.blue }}>{h.origem}</span>
+                      {h.modelo && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: COLORS.bluePale, color: COLORS.blueDark }}>{h.modelo}</span>}
+                      {h.nivel && <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 12, background: COLORS.creamDark, color: COLORS.gray }}>{h.nivel}</span>}
+                      {expirou && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: COLORS.danger + "22", color: COLORS.danger }}>⏰ Expirada</span>}
+                      {!expirou && diasRestantes !== null && diasRestantes <= 7 && <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: COLORS.warning + "33", color: COLORS.warning }}>⚠ {diasRestantes}d restantes</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: COLORS.grayLight }}>
+                      {h.empresa && <span>{h.empresa}</span>}
+                      {h.area && <span> · {h.area}</span>}
+                      {h.cidade && <span> · {h.cidade}</span>}
+                      {postagem && <span> · Postada em {postagem.toLocaleDateString("pt-BR")}</span>}
+                      {expiry && !expirou && <span> · Expira em {expiry.toLocaleDateString("pt-BR")}</span>}
+                    </div>
+                  </div>
+                );
+              })()}
               <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                 {/* Toggle ativo/inativo */}
                 <button onClick={() => toggleAtivo(h.id)} title={h.ativo ? "Desativar do portal" : "Ativar no portal"}
