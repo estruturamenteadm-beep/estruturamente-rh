@@ -283,7 +283,7 @@ const AbaCandidatos = () => {
   const [filtroCidade, setFiltroCidade] = useState("");
   const [modal, setModal] = useState(false);
   const [detModal, setDetModal] = useState(null);
-  const [form, setForm] = useState({ nome: "", idade: "", cidade: "", profissao: "", area: "", hardSkills: "", softSkills: "", adicional: "", pretensao: "", status: "Disponível", disc: "" });
+  const [form, setForm] = useState({ nome: "", email: "", telefone: "", idade: "", cidade: "", linkedin: "", profissao: "", area: "", areaDesejada: "", senioridade: "", contrato: "", modeloPreferido: "", pretensao: "", hardSkills: "", softSkills: "", formacao: "", instituicao: "", anoFormacao: "", idiomas: "", expEmpresa1: "", expCargo1: "", expPeriodo1: "", expEmpresa2: "", expCargo2: "", expPeriodo2: "", adicional: "", status: "Disponível", disc: "" });
   const [editId, setEditId] = useState(null);
   const [uploadStatus, setUploadStatus] = useState(""); // "", "enviando", "ok", "erro"
   const [curriculoFile, setCurriculoFile] = useState(null);
@@ -346,7 +346,7 @@ const AbaCandidatos = () => {
       await dbSalvarDoc("candidatos", novo);
     }
     setModal(false); setEditId(null); setCurriculoFile(null); setUploadStatus("");
-    setForm({ nome: "", idade: "", cidade: "", profissao: "", area: "", hardSkills: "", softSkills: "", adicional: "", pretensao: "", status: "Disponível", disc: "" });
+    setForm({ nome: "", email: "", telefone: "", idade: "", cidade: "", linkedin: "", profissao: "", area: "", areaDesejada: "", senioridade: "", contrato: "", modeloPreferido: "", pretensao: "", hardSkills: "", softSkills: "", formacao: "", instituicao: "", anoFormacao: "", idiomas: "", expEmpresa1: "", expCargo1: "", expPeriodo1: "", expEmpresa2: "", expCargo2: "", expPeriodo2: "", adicional: "", status: "Disponível", disc: "" });
   };
 
   const excluir = async (id) => { const u = candidatos.filter(c => c.id !== id); setCandidatos(u); DB.candidatos = u; await dbExcluirDoc('candidatos', id); };
@@ -427,37 +427,87 @@ const AbaCandidatos = () => {
         </table>
         {filtrados.length === 0 && <p style={{ textAlign: "center", color: COLORS.grayLight, padding: 30 }}>Nenhum candidato encontrado.</p>}
       </div>
-      <Modal open={modal} onClose={() => { setModal(false); setEditId(null); }} title={editId ? "Editar Candidato" : "Incluir Candidato"} width={640}>
-        <Grid2>
-          <FormRow label="Nome Completo"><input style={styles.input} value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></FormRow>
-          <FormRow label="Idade" half><input style={styles.input} type="number" value={form.idade} onChange={e => setForm({ ...form, idade: e.target.value })} /></FormRow>
-          <FormRow label="Cidade" half><input style={styles.input} value={form.cidade} onChange={e => setForm({ ...form, cidade: e.target.value })} /></FormRow>
-          <FormRow label="Profissão" half><input style={styles.input} value={form.profissao} onChange={e => setForm({ ...form, profissao: e.target.value })} /></FormRow>
-          <FormRow label="Área de Atuação" half><input style={styles.input} value={form.area} onChange={e => setForm({ ...form, area: e.target.value })} /></FormRow>
-          <FormRow label="Hard Skills"><textarea style={{ ...styles.textarea, height: 70 }} value={form.hardSkills} onChange={e => setForm({ ...form, hardSkills: e.target.value })} /></FormRow>
-          <FormRow label="Soft Skills"><textarea style={{ ...styles.textarea, height: 70 }} value={form.softSkills} onChange={e => setForm({ ...form, softSkills: e.target.value })} /></FormRow>
-          <FormRow label="Informações Adicionais"><textarea style={{ ...styles.textarea, height: 70 }} value={form.adicional} onChange={e => setForm({ ...form, adicional: e.target.value })} /></FormRow>
-          <FormRow label="Pretensão Salarial (R$)" half><input style={styles.input} type="number" value={form.pretensao} onChange={e => setForm({ ...form, pretensao: e.target.value })} /></FormRow>
-          <FormRow label="Status" half>
-            <select style={styles.select} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
-              {["Disponível", "Em processo", "Contratado", "Indisponível"].map(s => <option key={s}>{s}</option>)}
-            </select>
-          </FormRow>
-          <FormRow label="Perfil DISC" half>
-            <input style={styles.input} value={form.disc} onChange={e => setForm({ ...form, disc: e.target.value })} placeholder="Ex: D, I, S, C ou combinações" />
-          </FormRow>
-          <FormRow label="Currículo (PDF)" half>
-            <input type="file" accept=".pdf" style={{ ...styles.input, padding: "7px 10px" }} onChange={e => {
-              const file = e.target.files[0];
-              if (file) { setCurriculoFile(file); setForm({ ...form, curriculo: file.name }); setUploadStatus(""); }
-            }} />
-            {uploadStatus === "enviando" && <p style={{ fontSize: 11, color: COLORS.warning, margin: "4px 0 0" }}>Enviando arquivo...</p>}
-            {uploadStatus === "ok" && <p style={{ fontSize: 11, color: COLORS.success, margin: "4px 0 0" }}>Currículo salvo com sucesso!</p>}
-            {uploadStatus === "erro" && <p style={{ fontSize: 11, color: COLORS.danger, margin: "4px 0 0" }}>Erro ao enviar. Verifique o Object Storage.</p>}
-            {form.curriculo && !curriculoFile && <p style={{ fontSize: 11, color: COLORS.grayLight, margin: "4px 0 0" }}>Atual: {form.curriculo}</p>}
-          </FormRow>
-        </Grid2>
-        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+      <Modal open={modal} onClose={() => { setModal(false); setEditId(null); }} title={editId ? "Editar Candidato" : "Incluir Candidato"} width={700}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+
+          {/* Dados Pessoais */}
+          <p style={{ fontWeight: 800, fontSize: 12, color: COLORS.blueDark, textTransform: "uppercase", letterSpacing: "0.07em", borderBottom: `2px solid ${COLORS.bluePale}`, paddingBottom: 4, marginBottom: 14 }}>Dados Pessoais</p>
+          <Grid2>
+            <FormRow label="Nome Completo"><input style={styles.input} value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></FormRow>
+            <FormRow label="E-mail" half><input style={styles.input} value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></FormRow>
+            <FormRow label="Telefone / WhatsApp" half><input style={styles.input} value={form.telefone} onChange={e => setForm({ ...form, telefone: e.target.value })} /></FormRow>
+            <FormRow label="Cidade" half><input style={styles.input} value={form.cidade} onChange={e => setForm({ ...form, cidade: e.target.value })} /></FormRow>
+            <FormRow label="Idade" half><input style={styles.input} type="number" value={form.idade} onChange={e => setForm({ ...form, idade: e.target.value })} /></FormRow>
+            <FormRow label="LinkedIn"><input style={styles.input} value={form.linkedin} onChange={e => setForm({ ...form, linkedin: e.target.value })} placeholder="linkedin.com/in/perfil" /></FormRow>
+          </Grid2>
+
+          {/* Perfil Profissional */}
+          <p style={{ fontWeight: 800, fontSize: 12, color: COLORS.blueDark, textTransform: "uppercase", letterSpacing: "0.07em", borderBottom: `2px solid ${COLORS.bluePale}`, paddingBottom: 4, margin: "16px 0 14px" }}>Perfil Profissional</p>
+          <Grid2>
+            <FormRow label="Profissão / Cargo Atual" half><input style={styles.input} value={form.profissao} onChange={e => setForm({ ...form, profissao: e.target.value })} /></FormRow>
+            <FormRow label="Área de Atuação Atual" half><input style={styles.input} value={form.area} onChange={e => setForm({ ...form, area: e.target.value })} /></FormRow>
+            <FormRow label="Área Desejada" half><input style={styles.input} value={form.areaDesejada} onChange={e => setForm({ ...form, areaDesejada: e.target.value })} placeholder="Se diferente da atual" /></FormRow>
+            <FormRow label="Nível de Senioridade" half>
+              <select style={styles.select} value={form.senioridade} onChange={e => setForm({ ...form, senioridade: e.target.value })}>
+                <option value="">Selecione...</option>
+                {["Estágio","Júnior","Pleno","Sênior","Especialista","Coordenador","Gerência","Diretoria"].map(o => <option key={o}>{o}</option>)}
+              </select>
+            </FormRow>
+            <FormRow label="Tipo de Contrato Preferido" half>
+              <select style={styles.select} value={form.contrato} onChange={e => setForm({ ...form, contrato: e.target.value })}>
+                <option value="">Selecione...</option>
+                {["CLT","PJ","Estágio","Temporário","Autônomo","Indiferente"].map(o => <option key={o}>{o}</option>)}
+              </select>
+            </FormRow>
+            <FormRow label="Modelo Preferido" half>
+              <select style={styles.select} value={form.modeloPreferido} onChange={e => setForm({ ...form, modeloPreferido: e.target.value })}>
+                <option value="">Selecione...</option>
+                {["Presencial","Híbrido","Remoto","Indiferente"].map(o => <option key={o}>{o}</option>)}
+              </select>
+            </FormRow>
+            <FormRow label="Pretensão Salarial (R$)" half><input style={styles.input} type="number" value={form.pretensao} onChange={e => setForm({ ...form, pretensao: e.target.value })} /></FormRow>
+            <FormRow label="Status" half>
+              <select style={styles.select} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                {["Disponível","Em processo","Contratado","Indisponível"].map(s => <option key={s}>{s}</option>)}
+              </select>
+            </FormRow>
+            <FormRow label="Hard Skills"><textarea style={{ ...styles.textarea, height: 60 }} value={form.hardSkills} onChange={e => setForm({ ...form, hardSkills: e.target.value })} /></FormRow>
+            <FormRow label="Soft Skills"><textarea style={{ ...styles.textarea, height: 60 }} value={form.softSkills} onChange={e => setForm({ ...form, softSkills: e.target.value })} /></FormRow>
+            <FormRow label="Perfil DISC" half><input style={styles.input} value={form.disc} onChange={e => setForm({ ...form, disc: e.target.value })} placeholder="Ex: D, I, S, C" /></FormRow>
+          </Grid2>
+
+          {/* Formação */}
+          <p style={{ fontWeight: 800, fontSize: 12, color: COLORS.blueDark, textTransform: "uppercase", letterSpacing: "0.07em", borderBottom: `2px solid ${COLORS.bluePale}`, paddingBottom: 4, margin: "16px 0 14px" }}>Formação Acadêmica</p>
+          <Grid2>
+            <FormRow label="Curso / Graduação" half><input style={styles.input} value={form.formacao} onChange={e => setForm({ ...form, formacao: e.target.value })} placeholder="Ex: Administração" /></FormRow>
+            <FormRow label="Instituição" half><input style={styles.input} value={form.instituicao} onChange={e => setForm({ ...form, instituicao: e.target.value })} /></FormRow>
+            <FormRow label="Ano de Conclusão" half><input style={styles.input} value={form.anoFormacao} onChange={e => setForm({ ...form, anoFormacao: e.target.value })} placeholder="Ex: 2022 ou Cursando" /></FormRow>
+            <FormRow label="Idiomas" half><input style={styles.input} value={form.idiomas} onChange={e => setForm({ ...form, idiomas: e.target.value })} placeholder="Ex: Inglês avançado" /></FormRow>
+          </Grid2>
+
+          {/* Experiências */}
+          <p style={{ fontWeight: 800, fontSize: 12, color: COLORS.blueDark, textTransform: "uppercase", letterSpacing: "0.07em", borderBottom: `2px solid ${COLORS.bluePale}`, paddingBottom: 4, margin: "16px 0 14px" }}>Experiências Profissionais</p>
+          <div style={{ background: COLORS.cream, borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
+            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: COLORS.blueDark }}>Mais recente</p>
+            <Grid2>
+              <FormRow label="Empresa" half><input style={styles.input} value={form.expEmpresa1} onChange={e => setForm({ ...form, expEmpresa1: e.target.value })} /></FormRow>
+              <FormRow label="Cargo" half><input style={styles.input} value={form.expCargo1} onChange={e => setForm({ ...form, expCargo1: e.target.value })} /></FormRow>
+              <FormRow label="Período"><input style={styles.input} value={form.expPeriodo1} onChange={e => setForm({ ...form, expPeriodo1: e.target.value })} placeholder="Ex: Jan/2021 – Atual" /></FormRow>
+            </Grid2>
+          </div>
+          <div style={{ background: COLORS.cream, borderRadius: 8, padding: "12px 14px", marginBottom: 10 }}>
+            <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: COLORS.blueDark }}>Anterior</p>
+            <Grid2>
+              <FormRow label="Empresa" half><input style={styles.input} value={form.expEmpresa2} onChange={e => setForm({ ...form, expEmpresa2: e.target.value })} /></FormRow>
+              <FormRow label="Cargo" half><input style={styles.input} value={form.expCargo2} onChange={e => setForm({ ...form, expCargo2: e.target.value })} /></FormRow>
+              <FormRow label="Período"><input style={styles.input} value={form.expPeriodo2} onChange={e => setForm({ ...form, expPeriodo2: e.target.value })} placeholder="Ex: Mar/2019 – Dez/2020" /></FormRow>
+            </Grid2>
+          </div>
+          <Grid2>
+            <FormRow label="Complemento / Observações"><textarea style={{ ...styles.textarea, height: 70 }} value={form.adicional} onChange={e => setForm({ ...form, adicional: e.target.value })} placeholder="Outras experiências, conquistas, informações relevantes..." /></FormRow>
+          </Grid2>
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
           <button style={{ ...styles.btn, ...styles.btnPrimary, flex: 1 }} onClick={salvar}>Salvar Candidato</button>
           <button style={{ ...styles.btn, ...styles.btnSecondary }} onClick={() => { setModal(false); setEditId(null); }}>Cancelar</button>
         </div>
